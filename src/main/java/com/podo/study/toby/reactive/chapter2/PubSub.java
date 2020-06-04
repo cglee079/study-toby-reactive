@@ -19,9 +19,34 @@ public class PubSub {
     public static void main(String[] args) {
         final Publisher<Integer> pub = iterPub(Arrays.asList(1, 2, 3, 4, 5));
         final Publisher<Integer> mapPub = mapPub(pub, (a) -> a * 10);
+        final Publisher<Integer> sumPub = sumPub(mapPub);
         final Subscriber<Integer> sub = logSub();
 
-        mapPub.subscribe(sub);
+        sumPub.subscribe(sub);
+    }
+
+    private static Publisher<Integer> sumPub(Publisher<Integer> pub) {
+        return new Publisher<Integer>() {
+            int sum = 0;
+
+            @Override
+            public void subscribe(Subscriber<? super Integer> sub) {
+
+                pub.subscribe(new DelegateSub(sub) {
+
+                    @Override
+                    public void onNext(Integer i) {
+                        sum += i;
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        sub.onNext(sum);
+                        sub.onComplete();
+                    }
+                });
+            }
+        };
     }
 
     private static Publisher<Integer> mapPub(Publisher<Integer> pub, Function<Integer, Integer> func) {
