@@ -7,6 +7,7 @@ import org.reactivestreams.Subscription;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 // Reactive Streams - Operator
@@ -19,10 +20,33 @@ public class PubSub {
     public static void main(String[] args) {
         final Publisher<Integer> pub = iterPub(Arrays.asList(1, 2, 3, 4, 5));
         final Publisher<Integer> mapPub = mapPub(pub, (a) -> a * 10);
-        final Publisher<Integer> sumPub = sumPub(mapPub);
+//        final Publisher<Integer> sumPub = sumPub(mapPub);
+        final Publisher<Integer> reducePub = reducePub(mapPub, 0, Integer::sum);
         final Subscriber<Integer> sub = logSub();
 
-        sumPub.subscribe(sub);
+        reducePub.subscribe(sub);
+    }
+
+    private static Publisher<Integer> reducePub(Publisher<Integer> pub, int init, BiFunction<Integer, Integer, Integer> func) {
+        return new Publisher<Integer>() {
+            int result = init;
+
+            @Override
+            public void subscribe(Subscriber<? super Integer> sub) {
+                pub.subscribe(new DelegateSub(sub){
+                    @Override
+                    public void onNext(Integer i) {
+                        result = func.apply(result, i);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        sub.onNext(result);
+                        sub.onComplete();
+                    }
+                });
+            }
+        };
     }
 
     private static Publisher<Integer> sumPub(Publisher<Integer> pub) {
