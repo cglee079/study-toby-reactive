@@ -3,7 +3,7 @@ package com.podo.study.toby.reactive.chapter2;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
-public class DelegateSub implements Subscriber<Integer> {
+public class DelegateSub<T, R> implements Subscriber<T> {
 
     private final Subscriber subscriber;
 
@@ -17,7 +17,7 @@ public class DelegateSub implements Subscriber<Integer> {
     }
 
     @Override
-    public void onNext(Integer i) {
+    public void onNext(T i) {
         subscriber.onNext(i);
     }
 

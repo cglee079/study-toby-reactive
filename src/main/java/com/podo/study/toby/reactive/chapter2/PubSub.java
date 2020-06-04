@@ -20,22 +20,21 @@ public class PubSub {
     public static void main(String[] args) {
         final Publisher<Integer> pub = iterPub(Arrays.asList(1, 2, 3, 4, 5));
         final Publisher<Integer> mapPub = mapPub(pub, (a) -> a * 10);
-//        final Publisher<Integer> sumPub = sumPub(mapPub);
-        final Publisher<Integer> reducePub = reducePub(mapPub, 0, Integer::sum);
-        final Subscriber<Integer> sub = logSub();
+        final Publisher<String> reducePub = reducePub(mapPub, "", (a, b) -> a + "-" + b);
+        final Subscriber<String> sub = logSub();
 
         reducePub.subscribe(sub);
     }
 
-    private static Publisher<Integer> reducePub(Publisher<Integer> pub, int init, BiFunction<Integer, Integer, Integer> func) {
-        return new Publisher<Integer>() {
-            int result = init;
+    private static <T, R> Publisher<R> reducePub(Publisher<T> pub, R init, BiFunction<R, T, R> func) {
+        return new Publisher<R>() {
+            R result = init;
 
             @Override
-            public void subscribe(Subscriber<? super Integer> sub) {
-                pub.subscribe(new DelegateSub(sub){
+            public void subscribe(Subscriber<? super R> sub) {
+                pub.subscribe(new DelegateSub<T, R>(sub) {
                     @Override
-                    public void onNext(Integer i) {
+                    public void onNext(T i) {
                         result = func.apply(result, i);
                     }
 
@@ -49,37 +48,13 @@ public class PubSub {
         };
     }
 
-    private static Publisher<Integer> sumPub(Publisher<Integer> pub) {
-        return new Publisher<Integer>() {
-            int sum = 0;
-
+    private static <T> Publisher<T> mapPub(Publisher<T> pub, Function<T, T> func) {
+        return new Publisher<T>() {
             @Override
-            public void subscribe(Subscriber<? super Integer> sub) {
-
-                pub.subscribe(new DelegateSub(sub) {
-
+            public void subscribe(Subscriber<? super T> sub) {
+                pub.subscribe(new DelegateSub<T, T>(sub) {
                     @Override
-                    public void onNext(Integer i) {
-                        sum += i;
-                    }
-
-                    @Override
-                    public void onComplete() {
-                        sub.onNext(sum);
-                        sub.onComplete();
-                    }
-                });
-            }
-        };
-    }
-
-    private static Publisher<Integer> mapPub(Publisher<Integer> pub, Function<Integer, Integer> func) {
-        return new Publisher<Integer>() {
-            @Override
-            public void subscribe(Subscriber<? super Integer> sub) {
-                pub.subscribe(new DelegateSub(sub) {
-                    @Override
-                    public void onNext(Integer i) {
+                    public void onNext(T i) {
                         sub.onNext(func.apply(i));
                     }
                 });
@@ -87,8 +62,8 @@ public class PubSub {
         };
     }
 
-    private static Subscriber<Integer> logSub() {
-        return new Subscriber<Integer>() {
+    private static <T> Subscriber<T> logSub() {
+        return new Subscriber<T>() {
             @Override
             public void onSubscribe(Subscription subscription) {
                 log.debug("on Subscribe");
@@ -96,7 +71,7 @@ public class PubSub {
             }
 
             @Override
-            public void onNext(Integer i) {
+            public void onNext(T i) {
                 log.debug("on Next : {}", i);
             }
 
@@ -112,11 +87,11 @@ public class PubSub {
         };
     }
 
-    private static Publisher<Integer> iterPub(final List<Integer> iter) {
-        return new Publisher<Integer>() {
+    private static <T> Publisher<T> iterPub(final List<T> iter) {
+        return new Publisher<T>() {
 
             @Override
-            public void subscribe(Subscriber<? super Integer> sub) {
+            public void subscribe(Subscriber<? super T> sub) {
                 sub.onSubscribe(
                         // Subscription은 pub와 sub의 중재자.
                         // 예) pub가 빠름, sub가 느림 -> Subscription을 통해 sub가 조금 요청
@@ -124,7 +99,7 @@ public class PubSub {
                             @Override
                             public void request(long n) { // n 은 몇개의 데이터를 요청 할지
                                 try {
-                                    for (Integer i : iter) {
+                                    for (T i : iter) {
                                         sub.onNext(i);
                                     }
                                     sub.onComplete();
