@@ -7,6 +7,7 @@ import org.reactivestreams.Subscription;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 
 // Reactive Streams - Operator
 // Publisher -> Data -> Subscriber
@@ -17,9 +18,24 @@ public class PubSub {
 
     public static void main(String[] args) {
         final Publisher<Integer> pub = iterPub(Arrays.asList(1, 2, 3, 4, 5));
+        final Publisher<Integer> mapPub = mapPub(pub, (a) -> a * 10);
         final Subscriber<Integer> sub = logSub();
 
-        pub.subscribe(sub);
+        mapPub.subscribe(sub);
+    }
+
+    private static Publisher<Integer> mapPub(Publisher<Integer> pub, Function<Integer, Integer> func) {
+        return new Publisher<Integer>() {
+            @Override
+            public void subscribe(Subscriber<? super Integer> sub) {
+                pub.subscribe(new DelegateSub(sub) {
+                    @Override
+                    public void onNext(Integer i) {
+                        sub.onNext(func.apply(i));
+                    }
+                });
+            }
+        };
     }
 
     private static Subscriber<Integer> logSub() {
