@@ -1,10 +1,17 @@
-package com.podo.study.toby.reactive.chpater5.resolve2;
+package com.podo.study.toby.reactive.chapter5.resolve4;
 
 import io.netty.channel.nio.NioEventLoopGroup;
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.Netty4ClientHttpRequestFactory;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.AsyncResult;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.stereotype.Service;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,11 +34,14 @@ import org.springframework.web.context.request.async.DeferredResult;
  */
 
 @SpringBootApplication
+@EnableAsync
 public class SpringChapter5Application {
 
     @RestController
+    @RequiredArgsConstructor
     public static class MyController {
 
+        private final MyService myService;
         private AsyncRestTemplate restTemplate = new AsyncRestTemplate(new Netty4ClientHttpRequestFactory(new NioEventLoopGroup(1)));
 
         @GetMapping("/rest")
@@ -50,6 +60,9 @@ public class SpringChapter5Application {
             // -> QUIZ Netty의 기본 쓰레드 개수는 cpu 코어 개수 * 2
             // -> 로직을 추가해보자.
             // -> DeferredResult 를 사용.
+            // -> 순차적으로 의존적인 API 호출을 해야한다면..?
+            // -> 호출하고 로직을 수행해야한다면,, myService를 보자.
+            // -> 질문) 메모리 사용량은 ? -> 쓰레드가 별로 없기 때문에, 쓰레드에 대한 메모리는 부담없음.
 
             final DeferredResult<String> dr = new DeferredResult<>();
 
@@ -57,8 +70,24 @@ public class SpringChapter5Application {
                     restTemplate.getForEntity("http://localhost:8081/service?req={req}", String.class, "hello" + idx);
 
             f1.addCallback(s -> {
-                        //s - ResponseEntity<String>
-                        dr.setResult(s.getBody() + "/work");
+                        //s = ResponseEntity<String>
+                        final ListenableFuture<ResponseEntity<String>> f2 =
+                                restTemplate.getForEntity("http://localhost:8081/service2?req={req}", String.class, "hello" + idx);
+
+                        f2.addCallback(s2 -> {
+                                    final ListenableFuture<String> f3 = myService.work(s2.getBody());
+
+                                    f3.addCallback(s3 -> {
+                                        dr.setResult(s3);
+                                    }, e3 -> {
+                                        dr.setErrorResult(e3.getMessage());
+                                    });
+
+                                }, e2 -> {
+                                    dr.setErrorResult(e2.getMessage());
+                                }
+                        );
+
                     }, e -> {
                         dr.setErrorResult(e.getMessage());
                     }
@@ -67,6 +96,25 @@ public class SpringChapter5Application {
             return dr;
 
         }
+    }
+
+    @Service
+    public static class MyService {
+        @Async
+        public ListenableFuture<String> work(String req) {
+            return new AsyncResult<>(req + "/aysncwork");
+        }
+    }
+
+    @Bean
+    public ThreadPoolTaskExecutor myThreadPoll() {
+        final ThreadPoolTaskExecutor threadPoolExecutor = new ThreadPoolTaskExecutor();
+
+        threadPoolExecutor.setCorePoolSize(1);
+        threadPoolExecutor.setMaxPoolSize(1);
+        threadPoolExecutor.initialize();
+
+        return threadPoolExecutor;
     }
 
 

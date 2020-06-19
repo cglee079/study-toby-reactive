@@ -1,4 +1,4 @@
-package com.podo.study.toby.reactive.chpater5.resolve3;
+package com.podo.study.toby.reactive.chapter5.resolve3;
 
 import io.netty.channel.nio.NioEventLoopGroup;
 import org.springframework.boot.SpringApplication;
