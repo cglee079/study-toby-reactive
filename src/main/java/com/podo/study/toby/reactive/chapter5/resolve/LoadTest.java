@@ -1,4 +1,4 @@
-package com.podo.study.toby.reactive.chpater5.resolve;
+package com.podo.study.toby.reactive.chapter5.resolve;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StopWatch;

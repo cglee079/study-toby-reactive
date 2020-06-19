@@ -1,4 +1,4 @@
-package com.podo.study.toby.reactive.chpater5.resolve4;
+package com.podo.study.toby.reactive.chapter5.resolve5;
 
 import io.netty.channel.nio.NioEventLoopGroup;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +41,9 @@ public class SpringChapter5Application {
     @RequiredArgsConstructor
     public static class MyController {
 
+        private static final String URL1 = "http://localhost:8081/service?req={req}";
+        private static final String URL2 = "http://localhost:8081/service2?req={req}";
+
         private final MyService myService;
         private AsyncRestTemplate restTemplate = new AsyncRestTemplate(new Netty4ClientHttpRequestFactory(new NioEventLoopGroup(1)));
 
@@ -64,25 +67,25 @@ public class SpringChapter5Application {
             // -> 호출하고 로직을 수행해야한다면,, myService를 보자.
             // -> 질문) 메모리 사용량은 ? -> 쓰레드가 별로 없기 때문에, 쓰레드에 대한 메모리는 부담없음.
 
+            // -> 콜백 헬 문제...
+
+            // JDBC에 정의된 모든것은 블록킹..
+            // -> 비동기적인 방식으로..
+            // -> 쓰레드 추가 없이.. 현재는 자바의 JDBC가지고는 불가능 (2017)
+            // -> DB와 스토리지 드라이버 자체를 비동기로해주는 .. 몽고 DB 등
+            // -> 이건 어떻게 해결할것이냐? 현실적으로는 간단한 대안은 없다.
+            // -> 따라서, 쓰레드를 할당하나 자원이나 CPU 리소스를 손해보고 코드를 작성.
+
+
             final DeferredResult<String> dr = new DeferredResult<>();
 
-            final ListenableFuture<ResponseEntity<String>> f1 =
-                    restTemplate.getForEntity("http://localhost:8081/service?req={req}", String.class, "hello" + idx);
+            final ListenableFuture<ResponseEntity<String>> f1 = restTemplate.getForEntity(URL1, String.class, "h" + idx);
 
             f1.addCallback(s -> {
-                        //s = ResponseEntity<String>
-                        final ListenableFuture<ResponseEntity<String>> f2 =
-                                restTemplate.getForEntity("http://localhost:8081/service2?req={req}", String.class, "hello" + idx);
-
+                        final ListenableFuture<ResponseEntity<String>> f2 = restTemplate.getForEntity(URL2, String.class, "h" + idx);
                         f2.addCallback(s2 -> {
                                     final ListenableFuture<String> f3 = myService.work(s2.getBody());
-
-                                    f3.addCallback(s3 -> {
-                                        dr.setResult(s3);
-                                    }, e3 -> {
-                                        dr.setErrorResult(e3.getMessage());
-                                    });
-
+                                    f3.addCallback(s3 -> { dr.setResult(s3); }, e3 -> { dr.setErrorResult(e3.getMessage());});
                                 }, e2 -> {
                                     dr.setErrorResult(e2.getMessage());
                                 }

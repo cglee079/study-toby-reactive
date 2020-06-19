@@ -1,4 +1,4 @@
-package com.podo.study.toby.reactive.chpater5.resolve4;
+package com.podo.study.toby.reactive.chapter5.resolve4;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
