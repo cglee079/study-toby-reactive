@@ -24,19 +24,19 @@ import java.util.concurrent.Callable;
  */
 
 /**
- * NIO이전에, 톰캣에서 넘어오는 쓰레드에 하나의 서블렛 쓰레드 매칭
- * thread1  st1
- * thread2  st2
- * thread3  st3
- * thread4  st4
+ * NIO Connector 지원이전에, 톰캣에서 넘어오는 쓰레드에 하나의 서블렛 쓰레드 매칭
+ * 1  st1
+ * 2  st2
+ * 3  st3
+ * 4  st4
  */
 
-/** 톰캣에 NIO가 쓰레드를 잡음, 실행시키는 시점에 쓰레드에 맞추어 서블릿 쓰레드 생성 -> 큰 의미 없음
+/** 톰캣에 NIO Connector가 요청을 잡음, 실행시키는 시점에 쓰레드에 맞추어 서블릿 쓰레드 생성 -> 큰 의미 없음
  * 쓰레드풀 사이즈만큼 작업중이다 -> 큐에 쌓임 (응답시간 증가) -> 큐도 꽉참 -> 서비스에러 발생
- * thread1           st1 (ServletThread) -> req -> Work -> res
- * thread2           st2
- * thread3    NIO    st3
- * thread4           st4
+ * 1                      st1 (ServletThread) -> req -> Work -> res
+ * 2                      st2
+ * 3   NIO Connector     st3
+ * 4                      st4
  *
  * -> Work 가 동작하는 동안에, 서블릿쓰레드를 계속 들고있음.
  * -> Work 가 동작하는 동안, 서블릿쓰레드를 반환하고, 또다른 커넥션을 받으면 어떨까?
